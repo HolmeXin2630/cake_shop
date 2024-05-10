@@ -1,7 +1,6 @@
 import os
 import re
 import pandas as pd
-#from rich import print
 import xmltodict
 from dataclasses import dataclass,field
 
@@ -14,7 +13,9 @@ DF_HEADER_DICT = {'order_id':'订单编号',
                   'street_promoter':'地推成本',
                   'single_profit':'客单利润',
                   'commission':'总部抽成',
+                  'meituan_ext_cut':'美团抽成',
                   }
+MEITUAN_RATE = 0.096
 
 @dataclass(order=True)
 class OrderInfo(object):
@@ -25,21 +26,24 @@ class OrderInfo(object):
     postage_fee     : float = 0.0
     meituan_fee     : float = 2.5
     street_promoter : float = 0.0
-    single_profit   : float = 0.0
     commission      : float = 0.0
+    meituan_ext_cut : float = 0.0
+    single_profit   : float = 0.0
 
     def __post_init__(self):
         if(self.postage_fee in [0.0, 0, '', '0']):
             self.postage_fee = 0
             self.street_promoter = 15
+            self.meituan_ext_cut = self.real_income/(1-MEITUAN_RATE) * MEITUAN_RATE
+            self.meituan_ext_cut = round(self.meituan_ext_cut, 2)
         self.calc_single_profit(self.postage_fee)
-        self.commission = self.real_income/0.9 * 0.1
+        self.commission = round(self.real_income * 0.1 , 2)
 
     def calc_single_profit(self, is_real):
         if(is_real!=0):
             self.single_profit = self.real_income - (self.postage_fee+self.meituan_fee+self.street_promoter)
         else:
-            self.single_profit = 0 - (self.postage_fee+self.meituan_fee+self.street_promoter)
+            self.single_profit = 0 - (self.postage_fee+self.meituan_fee+self.street_promoter+self.meituan_ext_cut)
 
 @dataclass(order=True)
 class OrderTable(object):
@@ -80,6 +84,7 @@ class OrderTable(object):
             total_income = total_income + orderinfo.real_income
         for orderinfo in self.promoter_table:
             total_income = total_income - (orderinfo.meituan_fee+orderinfo.street_promoter)
+            total_income = round(total_income, 2) #保留2位小数
         return total_income
 
     def get_reback_income(self):
