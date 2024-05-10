@@ -52,6 +52,7 @@ class OrderTable(object):
     total_income    : float = 0.0
     average_income  : float = 0.0
     reback_income   : float = 0.0
+    total_post_fee  : float = 0.0
     table           : list[OrderInfo] = field(default_factory=list)
     real_table      : list[OrderInfo] = field(default_factory=list)
     promoter_table  : list[OrderInfo] = field(default_factory=list)
@@ -63,6 +64,7 @@ class OrderTable(object):
         self.total_income = self.get_totoal_income()
         self.average_income = self.total_income/self.real_orders
         self.reback_income = self.get_reback_income()
+        self.total_post_fee = sum(obj.postage_fee for obj in self.real_table)
 
     def __repr__(self):
         return f'实际单量：{self.real_orders}, \n实际总收入：{self.total_income}, \n平均单利润:{self.average_income}'
@@ -83,7 +85,7 @@ class OrderTable(object):
         for orderinfo in self.real_table:
             total_income = total_income + orderinfo.real_income
         for orderinfo in self.promoter_table:
-            total_income = total_income - (orderinfo.meituan_fee+orderinfo.street_promoter)
+            total_income = total_income - (orderinfo.meituan_fee+orderinfo.street_promoter+orderinfo.meituan_ext_cut)
             total_income = round(total_income, 2) #保留2位小数
         return total_income
 
@@ -172,8 +174,8 @@ def save_to_excel(ori_file_name, ordertable):
     df = pd.DataFrame(data=promoter_table_list, columns=header_list)
     df.to_excel(writer, sheet_name='刷单', index=False)
 
-    sum_list = [[ordertable.real_orders, ordertable.fake_orders, ordertable.total_income, ordertable.average_income, ordertable.reback_income]]
-    sum_header = ['真实单量', '刷单量', '减除配送费刷单费推广费的总利润', '每单平均利润', '总部需返点']
+    sum_list = [[ordertable.real_orders, ordertable.fake_orders, ordertable.total_income, ordertable.average_income, ordertable.reback_income, ordertable.total_post_fee]]
+    sum_header = ['真实单量', '刷单量', '减除配送费刷单费推广费的总利润', '每单平均利润', '总部需返点', '总配送费']
     df = pd.DataFrame(data=sum_list, columns=sum_header)
     df.to_excel(writer, sheet_name='统计', index=False)
 
